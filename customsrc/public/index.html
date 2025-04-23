@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loading...</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+    }
+
+    .loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 6px solid #444;
+      border-top: 6px solid #09f;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      z-index: 999;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #search-label {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 6px 12px;
+      border-radius: 8px;
+      z-index: 1000;
+    }
+
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      border: none;
+      display: none;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="search-label">Searching for "<strong id="search-term"></strong>"</div>
+  <div class="loader" id="loader"></div>
+  <iframe id="player"></iframe>
+
+  <script>
+    const searchParams = new URLSearchParams(window.location.search);
+    const searchTerm = searchParams.get('name');
+    const season = searchParams.get('season');
+    const episode = searchParams.get('episode');
+
+    document.getElementById("search-term").innerText = searchTerm;
+
+    let apiUrl = `/api/play?name=${encodeURIComponent(searchTerm)}`;
+    if (season) apiUrl += `&season=${encodeURIComponent(season)}`;
+    if (episode) apiUrl += `&episode=${encodeURIComponent(episode)}`;
+
+    const iframe = document.getElementById("player");
+    const loader = document.getElementById("loader");
+    const searchLabel = document.getElementById("search-label");
+
+    function checkForErrorAndSwap(url, altUrl) {
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+
+      // Wait a bit to ensure content has rendered
+      setTimeout(() => {
+        const errorDiv = iframeDoc.querySelector('.jw-error-text');
+        if (errorDiv && errorDiv.textContent.includes("This video file cannot be played")) {
+          console.log("Error detected in iframe, swapping source...");
+          iframe.src = altUrl;
+        }
+      }, 1500);
+    }
+
+    fetch(apiUrl)
+      .then(res => res.json())
+      .then(data => {
+        if (data.modifiedLink) {
+          const originalUrl = data.modifiedLink;
+          const useAlt = originalUrl.includes("kerolaunochan.xyz");
+          const fallbackUrl = useAlt
+            ? originalUrl.replace("kerolaunochan.xyz", "kerolaunochan.live")
+            : originalUrl.replace("kerolaunochan.live", "kerolaunochan.xyz");
+
+          iframe.src = originalUrl;
+          iframe.onload = () => {
+            loader.style.display = "none";
+            iframe.style.display = "block";
+            searchLabel.style.display = "none";
+
+            // Attempt to check for the JW Player error
+            try {
+              checkForErrorAndSwap(originalUrl, fallbackUrl);
+            } catch (e) {
+              console.warn("Could not access iframe content:", e);
+            }
+          };
+        } else {
+          loader.innerText = "❌ Error loading video.";
+        }
+      })
+      .catch(err => {
+        loader.innerText = "❌ Something went wrong.";
+      });
+  </script>
+</body>
+</html>
