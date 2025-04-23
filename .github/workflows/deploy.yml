@@ -1,0 +1,27 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main  # This triggers the workflow when you push to 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2  # Checks out the code from the repo
+
+    - name: Build site
+      run: |
+        # Here you can add steps to build your site, for example:
+        # npm install && npm run build
+        # If you have a static site, you might not need a build step.
+        # The built files should be in the `build/` folder or equivalent.
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3  # A GitHub Action to deploy to Pages
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./build  # This is the folder where your built site files are located
